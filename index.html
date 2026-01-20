@@ -144,15 +144,38 @@
 
     // 手機觸控控制
     canvas.addEventListener("touchmove", e=>{
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    // 將手指座標設定為人物圖片的 X 中心
-    mouseX = touch.clientX - rect.left;
-  
-    // 邊界檢查，避免超出畫面
-    if(mouseX < player.width/2) mouseX = player.width/2;
-    if(mouseX > canvas.width - player.width/2) mouseX = canvas.width - player.width/2;
-   });
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  const touchX = touch.clientX - rect.left;
+  const center = canvas.width / 2;
+
+  // 以角色左上角座標為 mouseX（與繪製一致）
+  let targetX;
+
+  if (touchX >= center) {
+    // 右側：往左補償，最多讓角色右邊緣貼齊畫布寬度
+    const ratio = (touchX - center) / center;           // 0 → 1
+    const maxComp = player.width / 2;                   // 最大補償量（半寬）
+    const offset = ratio * maxComp;                     // 動態補償
+    targetX = touchX - player.width / 2 - offset;       // 中心跟隨 + 左補償
+    const maxRight = canvas.width - player.width;       // 角色左上角最大值
+    if (targetX > maxRight) targetX = maxRight;         // 右邊緣＝畫布寬度
+  } else {
+    // 左側：往右補償，最多讓角色左邊緣貼齊 0
+    const ratio = (center - touchX) / center;           // 0 → 1
+    const maxComp = player.width / 2;
+    const offset = ratio * maxComp;
+    targetX = touchX - player.width / 2 + offset;       // 中心跟隨 + 右補償
+    if (targetX < 0) targetX = 0;                       // 左邊緣＝0
+  }
+
+  // 最終邊界保護（雙保險）
+  if (targetX < 0) targetX = 0;
+  if (targetX > canvas.width - player.width) targetX = canvas.width - player.width;
+
+  mouseX = targetX;
+});
+
 
 
 
