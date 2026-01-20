@@ -47,7 +47,6 @@
       aspect-ratio: 5 / 6;
       border: 2px solid #333;
       background: #000;
-      touch-action: none;
     }
   </style>
 </head>
@@ -74,24 +73,10 @@
     const successImg = new Image(); successImg.src = "成功.png";
     const bgm = new Audio("BGM.m4a"); bgm.loop = true; bgm.volume = 0.5;
 
-    // 🔧 修正片段 1：Canvas 尺寸對齊
-    function resizeCanvasToDisplaySize(canvas){
-      const rect = canvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width  = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
-    }
-    resizeCanvasToDisplaySize(canvas);
-
     function playSoundFrom(src, startTime){
       const sound = new Audio(src);
       sound.addEventListener("loadedmetadata", () => {
-        if (Number.isFinite(sound.duration) && startTime < sound.duration && startTime >= 0) {
-          sound.currentTime = startTime;
-        } else {
-          sound.currentTime = 0;
-        }
+        sound.currentTime = (startTime >= 0 && startTime < sound.duration) ? startTime : 0;
         sound.play().catch(()=>{});
       });
     }
@@ -141,46 +126,28 @@
       spawnInterval=setInterval(spawnItem,1000);
       paused=true; update();
       pauseBtn.textContent = "繼續";
-      bgm.pause(); 
-      bgm.currentTime = 0;
+      bgm.pause(); bgm.currentTime = 0;
+    }
+
+    // ✅ 通用座標轉換函式
+    function getCanvasCoords(clientX, clientY){
+      const rect = canvas.getBoundingClientRect();
+      const x = (clientX - rect.left) * (canvas.width / rect.width);
+      const y = (clientY - rect.top) * (canvas.height / rect.height);
+      return {x,y};
     }
 
     // 滑鼠控制
     canvas.addEventListener("mousemove", e=>{
-      const rect=canvas.getBoundingClientRect();
-      const cssX = e.clientX - rect.left;
-      const scaleX = canvas.width / rect.width;
-      mouseX = cssX * scaleX - player.width/2;
-      if(mouseX < 0) mouseX = 0;
-      if(mouseX > canvas.width - player.width) mouseX = canvas.width - player.width;
+      const pos = getCanvasCoords(e.clientX, e.clientY);
+      mouseX = pos.x - player.width/2;
     });
 
-    // 🔧 修正片段 2+3：觸控座標轉換 + 推力邏輯
-    function getCanvasXFromTouch(e, canvas){
-      const rect = canvas.getBoundingClientRect();
-      const touch = e.touches[0];
-      const cssX = touch.clientX - rect.left;
-      const scaleX = canvas.width / rect.width;
-      return cssX * scaleX;
-    }
-
+    // 手機觸控控制
     canvas.addEventListener("touchmove", e=>{
-      const touchXCanvas = getCanvasXFromTouch(e, canvas);
-      const center = canvas.width / 2;
-      let targetX;
-
-      if (touchXCanvas >= center) {
-        // 手指在右側 → 對應角色左邊緣
-        targetX = touchXCanvas;
-      } else {
-        // 手指在左側 → 對應角色右邊緣
-        targetX = touchXCanvas - player.width;
-      }
-
-      if (targetX < 0) targetX = 0;
-      if (targetX > canvas.width - player.width) targetX = canvas.width - player.width;
-
-      mouseX = targetX;
+      const touch = e.touches[0];
+      const pos = getCanvasCoords(touch.clientX, touch.clientY);
+      mouseX = pos.x - player.width/2;
     });
 
     // 暫停按鈕控制
@@ -212,14 +179,12 @@
       scoreDisplay.textContent="分數: "+score+" | 第 "+level+" 關 | 剩餘水果: " + (fruitsPerLevel - fruitCount);
     }
 
-    // ====== update()、showFloatingText()、endGame() 保留原本完整邏輯 ======
-        function update(){
+    function update(){
       ctx.clearRect(0,0,canvas.width,canvas.height);
       ctx.drawImage(bgImg,0,0,canvas.width,canvas.height);
-      ctx.fillStyle="rgba(0,0,0,0.4)";
-      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle="rgba(0,0,0,0.4)"; ctx.fillRect(0,0,canvas.width,canvas.height);
 
-      player.x += (mouseX - player.x) * 0.1;
+      player.x+=(mouseX-player.x)*0.1;
       facingRight = mouseX > player.x;
 
       ctx.save();
@@ -252,7 +217,7 @@
           const offsetY = canvas.height - targetHeight; 
           ctx.drawImage(successImg, offsetX, offsetY, targetWidth, targetHeight);
 
-          confetti.forEach(c=>{
+                    confetti.forEach(c=>{
             ctx.fillStyle = c.color;
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.size, 0, Math.PI*2);
@@ -283,7 +248,7 @@
       }
 
       items.forEach(item=>{
-        item.y += Math.min(10*speedMultiplier,(4+score*0.05)*speedMultiplier);
+        item.y+=Math.min(10*speedMultiplier,(4+score*0.05)*speedMultiplier);
         const fruitData=fruitImgs[item.key];
         ctx.drawImage(fruitData.img,item.x,item.y,60,60);
         const playerCenterX=player.x+player.width/2;
@@ -331,9 +296,10 @@
           scoreDisplay.textContent = 
             "分數: " + score + " | 第 " + level + " 關 | 剩餘水果: " + fruitsPerLevel;
           paused = true;
-          pauseBtn.textContent = "繼續";
-          bgm.pause();
-          setTimeout(()=>{ playSoundFrom("通關.m4a", 0.0); }, 200);
+		  pauseBtn.textContent = "繼續";
+          bgm.pause(); // ✅ 過關暫停 → 停止 BGM
+
+          playSoundFrom("通關.m4a", 0.0);
 
           showSuccess = true;
           successTimer = 180; 
@@ -383,12 +349,11 @@
       gameOver = true;
       player.fail = true;
       restartBtn.style.display = "block";
-      pauseBtn.style.display = "none";
-      bgm.pause();
+	  pauseBtn.style.display = "none"; // ✅ 被西瓜打中時隱藏暫停鍵
+	  bgm.pause(); // ✅ 遊戲結束 → 停止 BGM
     }
 
     restartBtn.addEventListener("click", initGame);
-
     initGame();
   </script>
 </body>
