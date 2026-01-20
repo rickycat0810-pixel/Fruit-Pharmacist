@@ -149,32 +149,23 @@
   const touchX = touch.clientX - rect.left;
   const center = canvas.width / 2;
 
-  // 以角色左上角座標為 mouseX（與繪製一致）
   let targetX;
 
   if (touchX >= center) {
-    // 右側：往左補償，最多讓角色右邊緣貼齊畫布寬度
-    const ratio = (touchX - center) / center;           // 0 → 1
-    const maxComp = player.width / 2;                   // 最大補償量（半寬）
-    const offset = ratio * maxComp;                     // 動態補償
-    targetX = touchX - player.width / 2 - offset;       // 中心跟隨 + 左補償
-    const maxRight = canvas.width - player.width;       // 角色左上角最大值
-    if (targetX > maxRight) targetX = maxRight;         // 右邊緣＝畫布寬度
+    // 右側：手指對應角色左邊緣 → 往右推
+    targetX = touchX; // player.x = 左邊緣
   } else {
-    // 左側：往右補償，最多讓角色左邊緣貼齊 0
-    const ratio = (center - touchX) / center;           // 0 → 1
-    const maxComp = player.width / 2;
-    const offset = ratio * maxComp;
-    targetX = touchX - player.width / 2 + offset;       // 中心跟隨 + 右補償
-    if (targetX < 0) targetX = 0;                       // 左邊緣＝0
+    // 左側：手指對應角色右邊緣 → 往左推
+    targetX = touchX - player.width; // player.x = 右邊緣 - 寬度
   }
 
-  // 最終邊界保護（雙保險）
+  // 邊界保護
   if (targetX < 0) targetX = 0;
   if (targetX > canvas.width - player.width) targetX = canvas.width - player.width;
 
   mouseX = targetX;
 });
+
 
 
 
