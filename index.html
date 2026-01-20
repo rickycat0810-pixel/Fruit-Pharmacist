@@ -12,45 +12,60 @@
       overflow: hidden;
       background: #000;
       font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
-    #gameCanvas {
-      display: block;
-      margin: auto;
-      max-width: 100%;
-      max-height: 100%;
-      aspect-ratio: 5 / 6; /* 保持原始比例 */
-      border: 2px solid #333;
+    #gameWrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 500px; /* 保持比例 */
+    }
+    #topBar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
     }
     #score {
-      position: absolute;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 24px;
+      font-size: 18px;
       font-weight: bold;
       color: #fff;
     }
+    #pauseBtn, #restartBtn {
+      font-size: 16px;
+      padding: 6px 12px;
+    }
     #restartBtn {
-      position: absolute;
-      top: 60px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 20px;
-      padding: 8px 16px;
       display: none;
+    }
+    #gameCanvas {
+      width: 100%;
+      aspect-ratio: 5 / 6; /* 保持直式比例 */
+      border: 2px solid #333;
+      background: #000;
     }
   </style>
 </head>
 <body>
-  <div id="score">分數: 0</div>
-  <button id="restartBtn">重新開始</button>
-  <canvas id="gameCanvas" width="500" height="600"></canvas>
+  <div id="gameWrapper">
+    <div id="topBar">
+      <div id="score">分數: 0</div>
+      <button id="pauseBtn">暫停</button>
+      <button id="restartBtn">重新開始</button>
+    </div>
+    <canvas id="gameCanvas" width="500" height="600"></canvas>
+  </div>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     const scoreDisplay = document.getElementById("score");
     const restartBtn = document.getElementById("restartBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
 
     const bgImg = new Image(); bgImg.src = "藥局.png";
     const playerImg = new Image(); playerImg.src = "角色.png";
@@ -107,26 +122,19 @@
       items = []; score=0; gameOver=false; level=1; fruitCount=0;
       speedMultiplier=1; watermelonChance=0.2;
       scoreDisplay.textContent="分數: 0 | 第 1 關 | 剩餘水果: " + fruitsPerLevel;
-      restartBtn.style.display="none"; mouseX=player.x;
+      restartBtn.style.display="none"; 
+	  pauseBtn.style.display="inline-block"; // ✅ 重新開始時顯示暫停鍵
+	  mouseX=player.x;
       clearInterval(spawnInterval);
       spawnInterval=setInterval(spawnItem,1000);
       paused=true; update();
+      pauseBtn.textContent = "繼續";
     }
 
     // 滑鼠控制
     canvas.addEventListener("mousemove", e=>{
       const rect=canvas.getBoundingClientRect();
       mouseX=e.clientX-rect.left-player.width/2;
-    });
-    canvas.addEventListener("click", ()=>{
-      if(gameOver) return;
-      paused=!paused;
-      if(!paused) update();
-      if(!audioUnlocked){
-        const unlock = new Audio();
-        unlock.play().catch(()=>{});
-        audioUnlocked = true;
-      }
     });
 
     // 手機觸控控制
@@ -135,16 +143,24 @@
       const touch=e.touches[0];
       mouseX=touch.clientX-rect.left-player.width/2;
     });
-    canvas.addEventListener("touchstart", ()=>{
-      if(gameOver) return;
-      paused=!paused;
-      if(!paused) update();
-      if(!audioUnlocked){
-        const unlock = new Audio();
-        unlock.play().catch(()=>{});
-        audioUnlocked = true;
-      }
-    });
+
+    // 暫停按鈕控制
+pauseBtn.addEventListener("click", ()=>{
+  if(gameOver) return;
+  paused = !paused;
+  if(!paused) {
+    update();
+    pauseBtn.textContent = "暫停";   // 遊戲進行中 → 顯示暫停
+  } else {
+    pauseBtn.textContent = "繼續";   // 遊戲暫停中 → 顯示繼續
+  }
+  if(!audioUnlocked){
+    const unlock = new Audio();
+    unlock.play().catch(()=>{});
+    audioUnlocked = true;
+  }
+});
+
 
     function spawnItem(){
       if(gameOver||paused) return;
@@ -194,7 +210,7 @@
           const offsetY = canvas.height - targetHeight; 
           ctx.drawImage(successImg, offsetX, offsetY, targetWidth, targetHeight);
 
-          confetti.forEach(c=>{
+                    confetti.forEach(c=>{
             ctx.fillStyle = c.color;
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.size, 0, Math.PI*2);
@@ -220,7 +236,7 @@
         ctx.fillText("每關掉落 30 顆水果 (不含西瓜)",canvas.width/2,canvas.height/2);
         ctx.fillText("漏接水果會扣分，最低 0 分",canvas.width/2,canvas.height/2+30);
         ctx.fillText("接到水果顯示加分文字",canvas.width/2,canvas.height/2+60);
-        ctx.fillText("點擊或觸碰螢幕繼續遊戲",canvas.width/2,canvas.height/2+90);
+        ctx.fillText("點擊暫停按鈕繼續遊戲",canvas.width/2,canvas.height/2+90);
         return;
       }
 
@@ -228,7 +244,6 @@
         item.y+=Math.min(10*speedMultiplier,(4+score*0.05)*speedMultiplier);
         const fruitData=fruitImgs[item.key];
         ctx.drawImage(fruitData.img,item.x,item.y,60,60);
-
         const playerCenterX=player.x+player.width/2;
         const playerCenterY=player.y+player.height/2;
         const fruitCenterX=item.x+30;
@@ -274,6 +289,8 @@
           scoreDisplay.textContent = 
             "分數: " + score + " | 第 " + level + " 關 | 剩餘水果: " + fruitsPerLevel;
           paused = true;
+		  pauseBtn.textContent = "繼續";
+
 
           playSoundFrom("通關.m4a", 0.0);
 
@@ -325,6 +342,7 @@
       gameOver = true;
       player.fail = true;
       restartBtn.style.display = "block";
+	  pauseBtn.style.display = "none"; // ✅ 被西瓜打中時隱藏暫停鍵
     }
 
     restartBtn.addEventListener("click", initGame);
