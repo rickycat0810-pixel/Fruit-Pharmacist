@@ -73,13 +73,43 @@
     const successImg = new Image(); successImg.src = "成功.png";
     const bgm = new Audio("BGM.m4a"); bgm.loop = true; bgm.volume = 0.5;
 
-    function playSoundFrom(src, startTime){
-      const sound = new Audio(src);
-      sound.addEventListener("loadedmetadata", () => {
-        sound.currentTime = (startTime >= 0 && startTime < sound.duration) ? startTime : 0;
-        sound.play().catch(()=>{});
-      });
+    // 🎵 Web Audio API
+    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let buffers = {};
+
+    function loadSound(name, url){
+      fetch(url)
+        .then(res => res.arrayBuffer())
+        .then(data => audioCtx.decodeAudioData(data))
+        .then(buffer => { buffers[name] = buffer; });
     }
+
+    function playSound(name){
+      if(!buffers[name]) return;
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffers[name];
+      source.connect(audioCtx.destination);
+      source.start(0);
+    }
+
+    // 預載音效
+    loadSound("eat", "吃水果.m4a");
+    loadSound("hit", "西瓜砸到.m4a");
+    loadSound("clear", "通關.m4a");
+
+    // 解鎖音訊（第一次觸控/點擊）
+    function unlockAudio(){
+      if(audioCtx.state === "suspended"){
+        audioCtx.resume();
+      }
+      const buffer = audioCtx.createBuffer(1, 1, 22050);
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      source.start(0);
+    }
+    document.body.addEventListener("touchstart", unlockAudio, {once:true});
+    document.body.addEventListener("click", unlockAudio, {once:true});
 
     let failRatio = 1;
     failImg.onload = () => { failRatio = failImg.width / failImg.height; };
@@ -112,7 +142,6 @@
     let showSuccess = false;
     let successTimer = 0;
     let confetti = [];
-    let audioUnlocked = false;
 
     function initGame() {
       player = { x:canvas.width/2-60, y:canvas.height-canvas.height/4-20, width:canvas.height/4*0.75, height:canvas.height/4, fail:false };
@@ -129,7 +158,6 @@
       bgm.pause(); bgm.currentTime = 0;
     }
 
-    // ✅ 通用座標轉換函式
     function getCanvasCoords(clientX, clientY){
       const rect = canvas.getBoundingClientRect();
       const x = (clientX - rect.left) * (canvas.width / rect.width);
@@ -137,20 +165,17 @@
       return {x,y};
     }
 
-    // 滑鼠控制
     canvas.addEventListener("mousemove", e=>{
       const pos = getCanvasCoords(e.clientX, e.clientY);
       mouseX = pos.x - player.width/2;
     });
 
-    // 手機觸控控制
     canvas.addEventListener("touchmove", e=>{
       const touch = e.touches[0];
       const pos = getCanvasCoords(touch.clientX, touch.clientY);
       mouseX = pos.x - player.width/2;
     });
 
-    // 暫停按鈕控制
     pauseBtn.addEventListener("click", ()=>{
       if(gameOver) return;
       paused = !paused;
@@ -161,11 +186,6 @@
       } else {
         pauseBtn.textContent = "繼續";
         bgm.pause();
-      }
-      if(!audioUnlocked){
-        const unlock = new Audio();
-        unlock.play().catch(()=>{});
-        audioUnlocked = true;
       }
     });
 
@@ -197,7 +217,7 @@
         const offsetX = (player.width - targetWidth) / 2;
         ctx.drawImage(failImg,-player.width/2+offsetX,offsetY,targetWidth,targetHeight);
       } else {
-        ctx.drawImage(playerImg,-player.width/2,0,player.width,player.height);
+                ctx.drawImage(playerImg,-player.width/2,0,player.width,player.height);
       }
       ctx.restore();
 
@@ -217,7 +237,7 @@
           const offsetY = canvas.height - targetHeight; 
           ctx.drawImage(successImg, offsetX, offsetY, targetWidth, targetHeight);
 
-                    confetti.forEach(c=>{
+          confetti.forEach(c=>{
             ctx.fillStyle = c.color;
             ctx.beginPath();
             ctx.arc(c.x, c.y, c.size, 0, Math.PI*2);
@@ -247,6 +267,7 @@
         return;
       }
 
+      // 水果更新與碰撞檢測
       items.forEach(item=>{
         item.y+=Math.min(10*speedMultiplier,(4+score*0.05)*speedMultiplier);
         const fruitData=fruitImgs[item.key];
@@ -260,11 +281,11 @@
 
         if(distance<catchRadius){
           if(item.bad){ 
-            playSoundFrom("西瓜砸到.m4a", 0.5);
+            playSound("hit");
             endGame(); 
           } else {
             score+=fruitData.score;
-            playSoundFrom("吃水果.m4a", 0.9);
+            playSound("eat");
             showFloatingText("+"+fruitData.score,"lime",fruitCenterX,fruitCenterY);
             scoreDisplay.textContent="分數: "+score+" | 第 "+level+" 關 | 剩餘水果: " + (fruitsPerLevel - fruitCount);
           }
@@ -296,10 +317,10 @@
           scoreDisplay.textContent = 
             "分數: " + score + " | 第 " + level + " 關 | 剩餘水果: " + fruitsPerLevel;
           paused = true;
-		  pauseBtn.textContent = "繼續";
-          bgm.pause(); // ✅ 過關暫停 → 停止 BGM
+          pauseBtn.textContent = "繼續";
+          bgm.pause();
 
-          playSoundFrom("通關.m4a", 0.0);
+          playSound("clear");
 
           showSuccess = true;
           successTimer = 180; 
@@ -349,8 +370,8 @@
       gameOver = true;
       player.fail = true;
       restartBtn.style.display = "block";
-	  pauseBtn.style.display = "none"; // ✅ 被西瓜打中時隱藏暫停鍵
-	  bgm.pause(); // ✅ 遊戲結束 → 停止 BGM
+      pauseBtn.style.display = "none";
+      bgm.pause();
     }
 
     restartBtn.addEventListener("click", initGame);
