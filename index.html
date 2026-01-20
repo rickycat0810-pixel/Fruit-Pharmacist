@@ -3,11 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <title>水果接接樂 - 關卡版</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
-    body { margin:0; overflow:hidden; background:#000; font-family:sans-serif; }
-    #gameCanvas { display:block; margin:auto; border:2px solid #333; }
-    #score { position:absolute; top:20px; left:50%; transform:translateX(-50%); font-size:24px; font-weight:bold; color:#fff; }
-    #restartBtn { position:absolute; top:60px; left:50%; transform:translateX(-50%); font-size:20px; padding:8px 16px; display:none; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: sans-serif;
+    }
+    #gameCanvas {
+      display: block;
+      margin: auto;
+      max-width: 100%;
+      max-height: 100%;
+      aspect-ratio: 5 / 6; /* 保持原始比例 */
+      border: 2px solid #333;
+    }
+    #score {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+    }
+    #restartBtn {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 20px;
+      padding: 8px 16px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -26,7 +57,6 @@
     const failImg = new Image(); failImg.src = "失敗.png";
     const successImg = new Image(); successImg.src = "成功.png";
 
-    // 安全版音效播放：等 metadata 載入後再設定 currentTime，並在使用者互動後允許播放
     function playSoundFrom(src, startTime){
       const sound = new Audio(src);
       sound.addEventListener("loadedmetadata", () => {
@@ -35,7 +65,7 @@
         } else {
           sound.currentTime = 0;
         }
-        sound.play().catch(()=>{ /* 靜默錯誤，避免中斷遊戲 */ });
+        sound.play().catch(()=>{});
       });
     }
 
@@ -67,11 +97,10 @@
 
     let floatingTexts = [];
     let facingRight = true;
-
-    // 成功畫面控制
     let showSuccess = false;
     let successTimer = 0;
     let confetti = [];
+    let audioUnlocked = false;
 
     function initGame() {
       player = { x:canvas.width/2-60, y:canvas.height-canvas.height/4-20, width:canvas.height/4*0.75, height:canvas.height/4, fail:false };
@@ -84,20 +113,33 @@
       paused=true; update();
     }
 
+    // 滑鼠控制
     canvas.addEventListener("mousemove", e=>{
       const rect=canvas.getBoundingClientRect();
       mouseX=e.clientX-rect.left-player.width/2;
     });
-
-    // 第一次點擊視為使用者互動，之後音效可即時播放
-    let audioUnlocked = false;
     canvas.addEventListener("click", ()=>{
       if(gameOver) return;
       paused=!paused;
       if(!paused) update();
-
       if(!audioUnlocked){
-        // 嘗試播放一個極短的空白音效以解鎖（或直接建立並播放）
+        const unlock = new Audio();
+        unlock.play().catch(()=>{});
+        audioUnlocked = true;
+      }
+    });
+
+    // 手機觸控控制
+    canvas.addEventListener("touchmove", e=>{
+      const rect=canvas.getBoundingClientRect();
+      const touch=e.touches[0];
+      mouseX=touch.clientX-rect.left-player.width/2;
+    });
+    canvas.addEventListener("touchstart", ()=>{
+      if(gameOver) return;
+      paused=!paused;
+      if(!paused) update();
+      if(!audioUnlocked){
         const unlock = new Audio();
         unlock.play().catch(()=>{});
         audioUnlocked = true;
@@ -178,7 +220,7 @@
         ctx.fillText("每關掉落 30 顆水果 (不含西瓜)",canvas.width/2,canvas.height/2);
         ctx.fillText("漏接水果會扣分，最低 0 分",canvas.width/2,canvas.height/2+30);
         ctx.fillText("接到水果顯示加分文字",canvas.width/2,canvas.height/2+60);
-        ctx.fillText("點擊滑鼠繼續遊戲",canvas.width/2,canvas.height/2+90);
+        ctx.fillText("點擊或觸碰螢幕繼續遊戲",canvas.width/2,canvas.height/2+90);
         return;
       }
 
@@ -196,11 +238,11 @@
 
         if(distance<catchRadius){
           if(item.bad){ 
-            playSoundFrom("西瓜砸到.m4a", 0.5); // 播放西瓜砸到音效
+            playSoundFrom("西瓜砸到.m4a", 0.5);
             endGame(); 
           } else {
             score+=fruitData.score;
-            playSoundFrom("吃水果.m4a", 0.9);   // 跳過前面 0.8 秒播放
+            playSoundFrom("吃水果.m4a", 0.9);
             showFloatingText("+"+fruitData.score,"lime",fruitCenterX,fruitCenterY);
             scoreDisplay.textContent="分數: "+score+" | 第 "+level+" 關 | 剩餘水果: " + (fruitsPerLevel - fruitCount);
           }
@@ -233,12 +275,10 @@
             "分數: " + score + " | 第 " + level + " 關 | 剩餘水果: " + fruitsPerLevel;
           paused = true;
 
-          // 播放通關音效
           playSoundFrom("通關.m4a", 0.0);
 
-          // 顯示成功畫面 3 秒
           showSuccess = true;
-          successTimer = 180; // 約 3 秒 (60fps)
+          successTimer = 180; 
           confetti = [];
           for(let i=0;i<50;i++){
             confetti.push({
@@ -263,8 +303,8 @@
         ctx.fillText(ft.text, ft.x, ft.y);
         ctx.globalAlpha = 1.0;
 
-        ft.y -= 1;       // 向上飄
-        ft.alpha -= 0.03; // 漸漸淡出
+        ft.y -= 1;
+        ft.alpha -= 0.03;
       });
       floatingTexts = floatingTexts.filter(ft => ft.alpha > 0);
 
