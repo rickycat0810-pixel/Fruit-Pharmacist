@@ -143,19 +143,17 @@
     });
 
     // 手機觸控控制
-    let lastTouchX = null;
     canvas.addEventListener("touchmove", e=>{
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
-    if(lastTouchX !== null){
-      const deltaX = touch.clientX - lastTouchX;
-      mouseX += deltaX; // 根據手指移動量推角色
-    }
-    lastTouchX = touch.clientX;
+    // 將手指座標設定為人物圖片的 X 中心
+    mouseX = touch.clientX - rect.left;
+  
+    // 邊界檢查，避免超出畫面
+    if(mouseX < player.width/2) mouseX = player.width/2;
+    if(mouseX > canvas.width - player.width/2) mouseX = canvas.width - player.width/2;
    });
-canvas.addEventListener("touchend", ()=>{
-  lastTouchX = null;
-});
+
 
 
     // 暫停按鈕控制
