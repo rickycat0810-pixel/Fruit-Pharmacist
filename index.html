@@ -73,14 +73,17 @@
     }
 
     // 🔓 解鎖音效（行動瀏覽器需要互動才能播放）
-    function unlockAudio(){
-      bgm.play().catch(()=>{});
-      eatSoundPool[0].play().catch(()=>{});
-      hitSound.play().catch(()=>{});
-      clearSound.play().catch(()=>{});
+   function unlockAudio(){
+      // 只呼叫 load()，讓瀏覽器建立播放管道，不會真的出聲
+      bgm.load();
+      eatSoundPool.forEach(a => a.load());
+      hitSound.load();
+      clearSound.load();
     }
-    document.body.addEventListener("touchstart", unlockAudio, {once:true});
-    document.body.addEventListener("click", unlockAudio, {once:true});
+
+
+    // ⚠️ 移除原本的 body click/touch 綁定，改成按下「繼續」時才觸發
+    let audioUnlocked = false;
 
     let failRatio = 1;
     failImg.onload = () => { failRatio = failImg.width / failImg.height; };
@@ -139,16 +142,11 @@
       spawnInterval = setInterval(spawnItem, 1000);
 
       paused = true;
-      pauseBtn.textContent = "繼續";
+      pauseBtn.textContent = "繼續"; // 初始顯示「繼續」
       bgm.pause(); bgm.currentTime = 0;
 
       update();
     }
-
-    // 在 update() 裡呼叫音效：
-    // playEat(0.8);
-    // playHit();
-    // playClear();
 
     function getCanvasCoords(clientX, clientY){
       const rect = canvas.getBoundingClientRect();
@@ -172,6 +170,11 @@
       if(gameOver) return;
       paused = !paused;
       if(!paused) {
+        // 第一次繼續時解鎖音效
+        if(!audioUnlocked){
+          unlockAudio();
+          audioUnlocked = true;
+        }
         update();
         pauseBtn.textContent = "暫停";
         bgm.play();
@@ -190,7 +193,6 @@
       items.push({x:Math.random()*(canvas.width-60),y:-60,key:fruitKey,bad:isBad});
       scoreDisplay.textContent="分數: "+score+" | 第 "+level+" 關 | 剩餘水果: " + (fruitsPerLevel - fruitCount);
     }
-
 
 
 
