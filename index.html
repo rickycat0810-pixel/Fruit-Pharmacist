@@ -6,48 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
     html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-      background: #000;
-      font-family: sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      margin: 0; padding: 0; height: 100%; overflow: hidden; background: #000;
+      font-family: sans-serif; display: flex; justify-content: center; align-items: center;
     }
-    #gameWrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-      max-width: 500px;
-    }
-    #topBar {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px;
-    }
-    #score {
-      font-size: 18px;
-      font-weight: bold;
-      color: #fff;
-    }
-    #pauseBtn, #restartBtn {
-      font-size: 16px;
-      padding: 6px 12px;
-    }
-    #restartBtn {
-      display: none;
-    }
-    #gameCanvas {
-      width: 100%;
-      aspect-ratio: 5 / 6;
-      border: 2px solid #333;
-      background: #000;
-    }
+    #gameWrapper { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; }
+    #topBar { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 8px; }
+    #score { font-size: 18px; font-weight: bold; color: #fff; }
+    #pauseBtn, #restartBtn { font-size: 16px; padding: 6px 12px; }
+    #restartBtn { display: none; }
+    #gameCanvas { width: 100%; aspect-ratio: 5 / 6; border: 2px solid #333; background: #000; }
   </style>
 </head>
 <body>
@@ -73,50 +40,33 @@
     const successImg = new Image(); successImg.src = "成功.png";
     const bgm = new Audio("BGM.m4a"); bgm.loop = true; bgm.volume = 0.5;
 
-    // 🎵 Web Audio API
-    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let buffers = {};
-    let currentSources = {};
+    // 🎵 音效快取
+    let audioCache = {
+      eat: new Audio("吃水果.m4a"),
+      hit: new Audio("西瓜砸到.m4a"),
+      clear: new Audio("通關.m4a")
+    };
+    let currentPlaying = {};
 
-    function loadSound(name, url){
-      fetch(url)
-        .then(res => res.arrayBuffer())
-        .then(data => audioCtx.decodeAudioData(data))
-        .then(buffer => { buffers[name] = buffer; });
-    }
-
-    function playSound(name, offset=0){
-      if(!buffers[name]) return;
-
-      // 停止同類音效
-      if(currentSources[name]){
-        try { currentSources[name].stop(); } catch(e){}
+    // 播放音效（eat 音效會中斷前一個）
+    function playSound(name, volume = 1){
+      if(name === "eat" && currentPlaying["eat"]){
+        try {
+          currentPlaying["eat"].pause();
+          currentPlaying["eat"].currentTime = 0;
+        } catch(e){}
+        currentPlaying["eat"] = null;
       }
 
-      const source = audioCtx.createBufferSource();
-      source.buffer = buffers[name];
-      source.connect(audioCtx.destination);
-      source.start(0, offset);
-
-      currentSources[name] = source;
-      source.onended = ()=>{ if(currentSources[name]===source) currentSources[name]=null; };
+      let audio = audioCache[name].cloneNode();
+      audio.volume = volume;
+      audio.play();
+      currentPlaying[name] = audio;
     }
 
-    // 預載音效
-    loadSound("eat", "吃水果.m4a");
-    loadSound("hit", "西瓜砸到.m4a");
-    loadSound("clear", "通關.m4a");
-
-    // 解鎖音訊
+    // 解鎖音訊（行動瀏覽器需要互動才能播放）
     function unlockAudio(){
-      if(audioCtx.state === "suspended"){
-        audioCtx.resume();
-      }
-      const buffer = audioCtx.createBuffer(1, 1, 22050);
-      const source = audioCtx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioCtx.destination);
-      source.start(0);
+      bgm.play().catch(()=>{}); // 嘗試播放 BGM 以解鎖
     }
     document.body.addEventListener("touchstart", unlockAudio, {once:true});
     document.body.addEventListener("click", unlockAudio, {once:true});
@@ -143,7 +93,7 @@
     let player, items, score, gameOver, mouseX, spawnInterval;
     let level, fruitCount, speedMultiplier, watermelonChance;
     let paused = true;
-    const catchRadius = 30;
+    let catchRadius = 34;
     const maxLevel = 10;
     const fruitsPerLevel = 30;
 
@@ -154,21 +104,42 @@
     let confetti = [];
 
     function initGame() {
-      player = { x:canvas.width/2-60, y:canvas.height-canvas.height/4-20, width:canvas.height/4*0.75, height:canvas.height/4, fail:false };
-      items = []; score=0; gameOver=false; level=1; fruitCount=0;
-      speedMultiplier=1; watermelonChance=0.2;
-      scoreDisplay.textContent="分數: 0 | 第 1 關 | 剩餘水果: " + fruitsPerLevel;
-      restartBtn.style.display="none"; 
-      pauseBtn.style.display="inline-block";
-      mouseX=player.x;
+      player = {
+        x: canvas.width/2 - 60,
+        y: canvas.height - canvas.height/4 - 20,
+        width: canvas.height/4 * 0.75,
+        height: canvas.height/4,
+        fail: false
+      };
+      items = [];
+      score = 0;
+      gameOver = false;
+      level = 1;
+      fruitCount = 0;
+      speedMultiplier = 1;
+      watermelonChance = 0.2;
+      scoreDisplay.textContent = "分數: 0 | 第 1 關 | 剩餘水果: " + fruitsPerLevel;
+
+      restartBtn.style.display = "none";
+      pauseBtn.style.display = "inline-block";
+      mouseX = player.x;
+
       clearInterval(spawnInterval);
-      spawnInterval=setInterval(spawnItem,1000);
-      paused=true; update();
+      spawnInterval = setInterval(spawnItem, 1000);
+
+      paused = true;
       pauseBtn.textContent = "繼續";
       bgm.pause(); bgm.currentTime = 0;
+
+      update();
     }
 
-    function getCanvasCoords(clientX, clientY){
+    // 在 update() 裡呼叫音效：
+    // playSound("eat",0.8);
+    // playSound("hit");
+    // playSound("clear");
+
+function getCanvasCoords(clientX, clientY){
       const rect = canvas.getBoundingClientRect();
       const x = (clientX - rect.left) * (canvas.width / rect.width);
       const y = (clientY - rect.top) * (canvas.height / rect.height);
@@ -209,7 +180,7 @@
       scoreDisplay.textContent="分數: "+score+" | 第 "+level+" 關 | 剩餘水果: " + (fruitsPerLevel - fruitCount);
     }
 
-    // ... update() 與其他函式保持不變，只需改成呼叫 playSound("eat",0.8) ...
+
 
     function update(){
       ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -297,7 +268,7 @@
             endGame(); 
           } else {
             score+=fruitData.score;
-            playSound("eat,0.8");
+            playSound("eat",0.8);
             showFloatingText("+"+fruitData.score,"lime",fruitCenterX,fruitCenterY);
             scoreDisplay.textContent="分數: "+score+" | 第 "+level+" 關 | 剩餘水果: " + (fruitsPerLevel - fruitCount);
           }
@@ -378,7 +349,7 @@
       pauseBtn.style.display = "none";
       bgm.pause();
     }
-
+	
     restartBtn.addEventListener("click", initGame);
     initGame();
   </script>
