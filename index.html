@@ -143,11 +143,20 @@
     });
 
     // 手機觸控控制
+    let lastTouchX = null;
     canvas.addEventListener("touchmove", e=>{
-      const rect=canvas.getBoundingClientRect();
-      const touch=e.touches[0];
-      mouseX=touch.clientX-rect.left-player.width/2;
-    });
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    if(lastTouchX !== null){
+      const deltaX = touch.clientX - lastTouchX;
+      mouseX += deltaX; // 根據手指移動量推角色
+    }
+    lastTouchX = touch.clientX;
+   });
+canvas.addEventListener("touchend", ()=>{
+  lastTouchX = null;
+});
+
 
     // 暫停按鈕控制
 pauseBtn.addEventListener("click", ()=>{
@@ -298,8 +307,10 @@ pauseBtn.addEventListener("click", ()=>{
           paused = true;
 		  pauseBtn.textContent = "繼續";
           bgm.pause(); // ✅ 過關暫停 → 停止 BGM
-
-          playSoundFrom("通關.m4a", 0.0);
+          
+		  setTimeout(()=>{ 
+		  playSoundFrom("通關.m4a", 0.0); 
+		  }, 200); // 延遲 0.2 秒再播放
 
           showSuccess = true;
           successTimer = 180; 
