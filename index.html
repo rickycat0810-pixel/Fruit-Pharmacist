@@ -71,6 +71,8 @@
     const playerImg = new Image(); playerImg.src = "角色.png";
     const failImg = new Image(); failImg.src = "失敗.png";
     const successImg = new Image(); successImg.src = "成功.png";
+	const bgm = new Audio("BGM.m4a"); bgm.loop = true; bgm.volume = 0.5; // 音量可調整
+ 	
 
     function playSoundFrom(src, startTime){
       const sound = new Audio(src);
@@ -129,6 +131,9 @@
       spawnInterval=setInterval(spawnItem,1000);
       paused=true; update();
       pauseBtn.textContent = "繼續";
+	  bgm.pause(); 
+	  bgm.currentTime = 0; // 一開始是暫停狀態，不播放，等玩家按「繼續」才播放
+	  
     }
 
     // 滑鼠控制
@@ -151,8 +156,10 @@ pauseBtn.addEventListener("click", ()=>{
   if(!paused) {
     update();
     pauseBtn.textContent = "暫停";   // 遊戲進行中 → 顯示暫停
+	bgm.play(); // ✅ 遊戲繼續 → 播放 BGM
   } else {
     pauseBtn.textContent = "繼續";   // 遊戲暫停中 → 顯示繼續
+	bgm.pause(); // ✅ 遊戲暫停 → 停止 BGM
   }
   if(!audioUnlocked){
     const unlock = new Audio();
@@ -290,7 +297,7 @@ pauseBtn.addEventListener("click", ()=>{
             "分數: " + score + " | 第 " + level + " 關 | 剩餘水果: " + fruitsPerLevel;
           paused = true;
 		  pauseBtn.textContent = "繼續";
-
+          bgm.pause(); // ✅ 過關暫停 → 停止 BGM
 
           playSoundFrom("通關.m4a", 0.0);
 
@@ -343,6 +350,7 @@ pauseBtn.addEventListener("click", ()=>{
       player.fail = true;
       restartBtn.style.display = "block";
 	  pauseBtn.style.display = "none"; // ✅ 被西瓜打中時隱藏暫停鍵
+	  bgm.pause(); // ✅ 遊戲結束 → 停止 BGM
     }
 
     restartBtn.addEventListener("click", initGame);
