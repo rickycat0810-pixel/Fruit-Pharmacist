@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>水果接接樂 - 關卡版</title>
+  <title>財寶接接樂 - 關卡版</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
     html, body {
@@ -132,7 +132,7 @@
       fruitCount = 0;
       speedMultiplier = 1;
       watermelonChance = 0.2;
-      scoreDisplay.textContent = "分數: 0 | 第 1 關 | 剩餘水果: " + fruitsPerLevel;
+      scoreDisplay.textContent = "分數: 0 | 第 1 關 | 剩餘財寶: " + fruitsPerLevel;
 
       restartBtn.style.display = "none";
       pauseBtn.style.display = "inline-block";
@@ -191,7 +191,7 @@
       const fruitKey=isBad?"🍉":fruits[Math.floor(Math.random()*fruits.length)];
       if(!isBad) fruitCount++;
       items.push({x:Math.random()*(canvas.width-60),y:-60,key:fruitKey,bad:isBad});
-      scoreDisplay.textContent="分數: "+score+" | 第 "+level+" 關 | 剩餘水果: " + (fruitsPerLevel - fruitCount);
+      scoreDisplay.textContent="分數: "+score+" | 第 "+level+" 關 | 剩餘財寶: " + (fruitsPerLevel - fruitCount);
     }
 
 
@@ -221,7 +221,7 @@
       if(gameOver){
         ctx.fillStyle="#fff"; ctx.font="28px sans-serif"; ctx.textAlign="center";
         ctx.fillText("遊戲結束! 最終分數: "+score,canvas.width/2,canvas.height/2-20);
-        ctx.fillText("多吃水果, 三芝藥師藥局關心您",canvas.width/2,canvas.height/2+20);
+        ctx.fillText("祝您發大財, 三芝藥師藥局關心您",canvas.width/2,canvas.height/2+20);
         return;
       }
 
@@ -257,9 +257,9 @@
         ctx.fillStyle="#fff"; ctx.font="20px sans-serif"; ctx.textAlign="center";
         ctx.fillText("遊戲暫停",canvas.width/2,canvas.height/2-60);
         ctx.fillText("規則：",canvas.width/2,canvas.height/2-30);
-        ctx.fillText("每關掉落 30 顆水果 (不含西瓜)",canvas.width/2,canvas.height/2);
-        ctx.fillText("漏接水果會扣分，最低 0 分",canvas.width/2,canvas.height/2+30);
-        ctx.fillText("接到水果顯示加分文字",canvas.width/2,canvas.height/2+60);
+        ctx.fillText("每關掉落 30 個財寶",canvas.width/2,canvas.height/2);
+        ctx.fillText("漏接財寶會扣分，最低 0 分",canvas.width/2,canvas.height/2+30);
+        ctx.fillText("接到財寶顯示加分文字",canvas.width/2,canvas.height/2+60);
         ctx.fillText("點擊暫停按鈕繼續遊戲",canvas.width/2,canvas.height/2+90);
         return;
       }
@@ -284,7 +284,7 @@
             score+=fruitData.score;
             playEat(0.8);
             showFloatingText("+"+fruitData.score,"lime",fruitCenterX,fruitCenterY);
-            scoreDisplay.textContent="分數: "+score+" | 第 "+level+" 關 | 剩餘水果: " + (fruitsPerLevel - fruitCount);
+            scoreDisplay.textContent="分數: "+score+" | 第 "+level+" 關 | 剩餘財寶: " + (fruitsPerLevel - fruitCount);
           }
           items = items.filter(f => f !== item);
         }
@@ -297,7 +297,7 @@
           if(score - deduct < 0){ deduct = score; }
           score -= deduct; 
           showFloatingText("-"+deduct,"red",item.x+30,canvas.height-30); 
-          scoreDisplay.textContent = "分數: " + score + " | 第 " + level + " 關 | 剩餘水果: " + (fruitsPerLevel - fruitCount);
+          scoreDisplay.textContent = "分數: " + score + " | 第 " + level + " 關 | 剩餘財寶: " + (fruitsPerLevel - fruitCount);
           items = items.filter(f => f !== item);
         } 
       });
@@ -312,7 +312,7 @@
           speedMultiplier *= 1.1;
           watermelonChance *= 1.1;
           scoreDisplay.textContent = 
-            "分數: " + score + " | 第 " + level + " 關 | 剩餘水果: " + fruitsPerLevel;
+            "分數: " + score + " | 第 " + level + " 關 | 剩餘財寶: " + fruitsPerLevel;
           paused = true;
           pauseBtn.textContent = "繼續";
           bgm.pause();
